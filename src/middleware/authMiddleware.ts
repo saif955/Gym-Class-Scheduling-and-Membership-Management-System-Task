@@ -1,39 +1,69 @@
-import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
 
-export const authenticateUser = (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if(!token){
-        return res.status(401).json({ message: 'Unauthorized' });
-    }
+// Define the user type that will be attached to the request
+interface AuthUser {
+    id: string;
+    email: string;
+    role: string;
+}
 
-    try{
+// Extend the Express Request type to include our user
+interface AuthRequest extends Request {
+    user?: AuthUser;
+}
+
+// Authentication middleware
+export const authenticateUser = (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        // Get token from header
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ message: 'No token provided' });
+        }
+
+        // Extract token from "Bearer <token>"
+        const token = authHeader.split(' ')[1];
+        if (!token) {
+            return res.status(401).json({ message: 'Invalid token format' });
+        }
+
+        // Verify token
         const decoded = verifyToken(token);
         req.user = decoded;
         next();
-    }catch(error){
-        return res.status(401).json({ message: 'Unauthorized' });
+    } catch (error) {
+        return res.status(401).json({ message: 'Invalid token' });
     }
 };
 
-export const authorizeAdmin = (req: Request, res: Response, next: NextFunction) => {
-    if(req.user.role !== 'admin'){
-        return res.status(403).json({ message: 'Forbidden' });
+// Role-based authorization middleware
+export const authorizeAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
     }
-    next();
-};
-
-export const authorizeTrainer = (req: Request, res: Response, next: NextFunction) => {
-    if(req.user.role !== 'trainer'){
-        return res.status(403).json({ message: 'Forbidden' });
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
     }
     next();
 };
 
-export const authorizeTrainee = (req: Request, res: Response, next: NextFunction) => {
-    if(req.user.role !== 'trainee'){
-        return res.status(403).json({ message: 'Forbidden' });
+export const authorizeTrainer = (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+    }
+    if (req.user.role !== 'trainer') {
+        return res.status(403).json({ message: 'Trainer access required' });
+    }
+    next();
+};
+
+export const authorizeTrainee = (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+    }
+    if (req.user.role !== 'trainee') {
+        return res.status(403).json({ message: 'Trainee access required' });
     }
     next();
 };
