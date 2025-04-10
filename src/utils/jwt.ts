@@ -9,21 +9,11 @@ interface TokenPayload {
     id: string;
     email: string;
     role: string;
-}   
+}
 
-export const generateToken = (user: IUser): string => {
-    const payload: TokenPayload = {
-        id: (user._id as mongoose.Types.ObjectId).toString(),
-        email: user.email,
-        role: user.role
-    };
-
-    const options: SignOptions = {
-        expiresIn: parseInt(JWT_EXPIRES_IN)
-    };
-
-    return jwt.sign(payload, JWT_SECRET, options);
-};
+export const generateToken = (user: IUser) => {
+    return jwt.sign({ id: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '1d' });
+}
 
 export const verifyToken = (token: string): TokenPayload => {
     try {

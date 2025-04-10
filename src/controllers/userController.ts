@@ -1,13 +1,17 @@
 import { Request, Response } from 'express';
 import User, { IUser } from "../models/Users";
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
+import { hashPassword, comparePassword } from "../utils/password";
+import { generateToken } from '../utils/jwt';
+import {
+  successResponse,
+  validationErrorResponse,
+  unauthorizedResponse
+} from "../utils/responseHandler";
 
-interface UserRequestBody {
+interface TraineeRequestBody {
     name: string;
     email: string;
     password: string;
-    role?: 'admin' | 'trainer' | 'trainee';
 }
 
 interface LoginRequestBody {
@@ -19,140 +23,195 @@ export const login = async (req: Request<{}, {}, LoginRequestBody>, res: Respons
     try {
         const { email, password } = req.body;
 
-        // Find user by email
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+        // Find trainee by email
+        const trainee = await User.findOne({ email });
+        if (!trainee) {
+            return res.status(401).json(
+                unauthorizedResponse('Invalid credentials')
+            );
         }
 
         // Check password
-        const isMatch = await bcrypt.compare(password, user.password);
+        const isMatch = await comparePassword(password, trainee.password);
         if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(401).json(
+                unauthorizedResponse('Invalid credentials')
+            );
         }
 
         // Generate token
-        const token = generateToken(user);
+        const token = generateToken(trainee);
 
-        res.status(200).json({
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role
-            }
-        });
+        res.status(200).json(
+            successResponse('Login successful', {
+                token,
+                trainee: {
+                    id: trainee._id,
+                    name: trainee.name,
+                    email: trainee.email,
+                    role: trainee.role
+                }
+            })
+        );
     } catch (error) {
-        res.status(500).json({ error: (error as Error).message });
+        res.status(500).json(
+            successResponse('Server error', null, 500)
+        );
     }
 };
 
-export const createUser = async (req: Request<{}, {}, UserRequestBody>, res: Response) => {
+export const createTrainee = async (req: Request<{}, {}, TraineeRequestBody>, res: Response) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password } = req.body;
+
+        // Validate required fields
+        if (!name || !email || !password) {
+            return res.status(400).json(
+                validationErrorResponse('trainee', 'All fields are required')
+            );
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json(
+                validationErrorResponse('email', 'Invalid email format')
+            );
+        }
 
         // Hash password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+        const hashedPassword = await hashPassword(password);
 
-        const user = new User({
+        const trainee = new User({
             name,
             email,
             password: hashedPassword,
-            role
+            role: 'trainee'
         });
-        await user.save();
+        await trainee.save();
 
         // Generate token
-        const token = generateToken(user);
+        const token = generateToken(trainee);
 
-        res.status(201).json({
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role
-            }
-        });
-    } catch (error) {
-        res.status(400).json({ error: (error as Error).message });
-    }
-}
-
-export const getAllUsers = async (req: Request, res: Response) => {
-    try {
-        const users = await User.find();
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).json({ error: (error as Error).message });
-    }
-}
-
-export const getUserById = async (req: Request<{ id: string }>, res: Response) => {
-    try {
-        const { id } = req.params;
-        const user = await User.findById(id);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.status(200).json(user);
-    } catch (error) {
-        res.status(500).json({ error: (error as Error).message });
-    }
-}
-
-export const updateUser = async (req: Request<{ id: string }, {}, UserRequestBody>, res: Response) => {
-    try {
-        const { id } = req.params;
-        const { name, email, password, role } = req.body;
-
-        let updateData: any = { name, email, role };
-
-        // Only hash and update password if it's provided
-        if (password) {
-            const salt = await bcrypt.genSalt(10);
-            updateData.password = await bcrypt.hash(password, salt);
-        }
-
-        const user = await User.findByIdAndUpdate(
-            id,
-            updateData,
-            { new: true, runValidators: true }
+        res.status(201).json(
+            successResponse('Trainee created successfully', {
+                token,
+                trainee: {
+                    id: trainee._id,
+                    name: trainee.name,
+                    email: trainee.email,
+                    role: trainee.role
+                }
+            }, 201)
         );
-
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.status(200).json(user);
     } catch (error) {
-        res.status(400).json({ error: (error as Error).message });
+        if ((error as any).code === 11000) {
+            return res.status(400).json(
+                validationErrorResponse('email', 'Email already exists')
+            );
+        }
+        res.status(500).json(
+            successResponse('Server error', null, 500)
+        );
     }
-}
+};
 
-export const deleteUser = async (req: Request<{ id: string }>, res: Response) => {
+export const getAllTrainees = async (req: Request, res: Response) => {
     try {
-        const { id } = req.params;
-        const user = await User.findByIdAndDelete(id);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.status(200).json({ message: "User deleted successfully" });
+        const trainees = await User.find({ role: 'trainee' }).select('-password');
+        res.status(200).json(
+            successResponse('Trainees retrieved successfully', trainees)
+        );
     } catch (error) {
-        res.status(500).json({ error: (error as Error).message });
+        res.status(500).json(
+            successResponse('Server error', null, 500)
+        );
     }
-}
+};
 
-const hashPassword = async (password: string) => {
-    const salt = await bcrypt.genSalt(10);
-    return await bcrypt.hash(password, salt);
-}
+export const getTraineeById = async (req: Request<{ id: string }>, res: Response) => {
+    try {
+        const trainee = await User.findOne({ 
+            _id: req.params.id,
+            role: 'trainee'
+        }).select('-password');
+        if (!trainee) {
+            return res.status(404).json(
+                successResponse('Trainee not found', null, 404)
+            );
+        }
+        res.status(200).json(
+            successResponse('Trainee retrieved successfully', trainee)
+        );
+    } catch (error) {
+        res.status(500).json(
+            successResponse('Server error', null, 500)
+        );
+    }
+};
 
-const comparePassword = async (password: string, hashedPassword: string) => {
-    return await bcrypt.compare(password, hashedPassword);
-}
+export const updateTrainee = async (req: Request<{ id: string }, {}, TraineeRequestBody>, res: Response) => {
+    try {
+        const { name, email, password } = req.body;
+        const traineeId = req.params.id;
 
-const generateToken = (user: IUser) => {
-    return jwt.sign({ id: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '1d' });
-}
+        // Validate email format if email is being updated
+        if (email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                return res.status(400).json(
+                    validationErrorResponse('email', 'Invalid email format')
+                );
+            }
+        }
+
+        const updateData: any = { name, email };
+        if (password) {
+            updateData.password = await hashPassword(password);
+        }
+
+        const trainee = await User.findByIdAndUpdate(
+            traineeId,
+            updateData,
+            { new: true }
+        ).select('-password');
+
+        if (!trainee) {
+            return res.status(404).json(
+                successResponse('Trainee not found', null, 404)
+            );
+        }
+
+        res.status(200).json(
+            successResponse('Trainee updated successfully', trainee)
+        );
+    } catch (error) {
+        if ((error as any).code === 11000) {
+            return res.status(400).json(
+                validationErrorResponse('email', 'Email already exists')
+            );
+        }
+        res.status(500).json(
+            successResponse('Server error', null, 500)
+        );
+    }
+};
+
+export const deleteTrainee = async (req: Request<{ id: string }>, res: Response) => {
+    try {
+        const trainee = await User.findByIdAndDelete(req.params.id);
+        if (!trainee) {
+            return res.status(404).json(
+                successResponse('Trainee not found', null, 404)
+            );
+        }
+        res.status(200).json(
+            successResponse('Trainee deleted successfully', null)
+        );
+    } catch (error) {
+        res.status(500).json(
+            successResponse('Server error', null, 500)
+        );
+    }
+};
+

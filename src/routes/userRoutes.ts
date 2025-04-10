@@ -1,13 +1,13 @@
 import express from "express";
-import { createUser, login, updateUser, deleteUser, getAllUsers } from "../controllers/userController";
+import { createTrainee, login, updateTrainee, deleteTrainee, getAllTrainees } from "../controllers/userController";
 import { authenticateUser, authorizeAdmin } from "../middleware/authMiddleware";
 
 const router = express.Router();
 
-router.post('/', createUser);
+router.post('/', createTrainee);
 router.post('/login', login);
-router.get('/', authenticateUser, authorizeAdmin, getAllUsers);
-router.put('/:id', updateUser);
-router.delete('/:id', deleteUser);
+router.get('/', authenticateUser, authorizeAdmin, getAllTrainees);
+router.put('/:id',authenticateUser, updateTrainee);
+router.delete('/:id',authenticateUser, deleteTrainee);
 
 export default router;
