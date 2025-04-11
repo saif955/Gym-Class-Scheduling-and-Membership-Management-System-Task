@@ -1,10 +1,10 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
-import connectDB from './config/database';
-import userRoutes from './routes/userRoutes';
-import adminRoutes from './routes/adminRoutes';
-import trainerRoutes from './routes/trainerRoutes';
-import traineeRoutes from './routes/traineeRoutes';
+import connectDB from './src/config/database';
+import userRoutes from './src/routes/userRoutes';
+import adminRoutes from './src/routes/adminRoutes';
+import trainerRoutes from './src/routes/trainerRoutes';
+import traineeRoutes from './src/routes/traineeRoutes';
 // Load environment variables
 dotenv.config();
 
@@ -29,3 +29,4 @@ app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });  
 
+export default app
