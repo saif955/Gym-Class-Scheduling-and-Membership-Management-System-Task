@@ -2,9 +2,10 @@ import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import connectDB from './src/config/database';
 import userRoutes from './src/routes/userRoutes';
-import adminRoutes from './src/routes/adminRoutes';
 import trainerRoutes from './src/routes/trainerRoutes';
+import scheduleRoutes from './src/routes/scheduleRoutes';
 import traineeRoutes from './src/routes/traineeRoutes';
+import  errorHandler  from './src/middleware/errorHandler';
 // Load environment variables
 dotenv.config();
 
@@ -19,11 +20,11 @@ app.use(express.urlencoded({ extended: false }));
 connectDB();
 
 // Routes
-app.use('/api/admin', adminRoutes);
+app.use('/api/trainer', trainerRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/trainee',traineeRoutes);
-app.use('/api/trainer',trainerRoutes);
-
+app.use('/api/schedule',scheduleRoutes);
+app.use(errorHandler);
 // Start server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

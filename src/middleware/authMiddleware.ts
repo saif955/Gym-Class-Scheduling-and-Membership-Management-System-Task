@@ -1,18 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
 import { unauthorizedResponse } from '../utils/responseHandler';
-
+import { AuthRequest } from '../types/userTypes';
 // Define the user type that will be attached to the request
-interface AuthUser {
-    id: string;
-    email: string;
-    role: string;
-}
-
-// Extend the Express Request type to include our user
-interface AuthRequest extends Request {
-    user?: AuthUser;
-}
 
 // Authentication middleware
 export const authenticateUser = (req: AuthRequest, res: Response, next: NextFunction) => {

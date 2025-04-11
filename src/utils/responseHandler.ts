@@ -1,15 +1,4 @@
-interface ErrorDetails {
-  field?: string;
-  message: string;
-}
-
-interface ApiResponse {
-  success: boolean;
-  message: string;
-  statusCode?: number;
-  errorDetails?: ErrorDetails | string;
-  data?: any;
-}
+import { ErrorDetails, ApiResponse } from "../types/responseTypes";
 
 export const successResponse = (
   message: string,
@@ -57,5 +46,21 @@ export const scheduleLimitExceededResponse = (): ApiResponse => {
   return {
     success: false,
     message: "Maximum 5 schedules per day limit exceeded."
+  };
+};
+
+export const notFoundResponse = (message: string): ApiResponse => {
+  return {
+    success: false,
+    message,
+    statusCode: 404
+  };
+};
+
+export const serverErrorResponse = (message: string): ApiResponse => {
+  return {
+    success: false,
+    message,
+    statusCode: 500
   };
 };

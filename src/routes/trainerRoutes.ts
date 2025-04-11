@@ -1,10 +1,12 @@
 import express from "express";
-import { authenticateUser, authorizeAdmin, authorizeTrainer } from "../middleware/authMiddleware";
-import { getAllClassSchedules, createClassSchedule, deleteClassSchedule, updateClassSchedule } from "../controllers/trainerController";
+import { createTrainer, updateTrainer, deleteTrainer } from "../controllers/trainerController";
+import { authenticateUser, authorizeAdmin } from "../middleware/authMiddleware";
+
 const router = express.Router();
 
-router.get('/', authenticateUser, authorizeTrainer, getAllClassSchedules)
-router.post('/', authenticateUser, authorizeAdmin, createClassSchedule)
-router.delete('/:id', authenticateUser, authorizeAdmin, deleteClassSchedule)
-router.put('/:id', authenticateUser, authorizeAdmin, updateClassSchedule)
+router.post('/', authenticateUser, authorizeAdmin, createTrainer);
+router.put('/:id', authenticateUser, authorizeAdmin, updateTrainer);
+router.delete('/:id', authenticateUser, authorizeAdmin, deleteTrainer);
+
 export default router;
+

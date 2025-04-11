@@ -1,276 +1,158 @@
 import { Request, Response } from 'express';
-import Schedule, { ISchedule } from "../models/Schedule";
-import { Types } from 'mongoose';
+import User  from "../models/Users";
+import { hashPassword } from "../utils/password";
 import {
     successResponse,
     validationErrorResponse,
-    unauthorizedResponse,
-    limitExceededResponse,
-    scheduleLimitExceededResponse
+    unauthorizedResponse
 } from "../utils/responseHandler";
-
-interface ClassScheduleRequestBody {
-    trainerId: string;
-    className: string;
-    description: string;
-    date: string;
-    startTime: string;
-    maxParticipants: number;
-}
-interface AuthRequest extends Request {
-    user?: { id: string; role: string };
-}
+import { TrainerRequestBody, IUser  } from "../types/userTypes";
 
 
-
-export const getAllClassSchedules = async (req: AuthRequest, res: Response) => {
+export const createTrainer = async (req: Request<{}, {}, TrainerRequestBody>, res: Response) => {
     try {
-        const trainerId = req.user?.id;
-
-        // Validate authentication
-        if (!trainerId) {
-            return res.status(401).json(
-                unauthorizedResponse('Trainer not authenticated')
-            );
-        }
-
-        // Validate ObjectId format
-        if (!Types.ObjectId.isValid(trainerId)) {
-            return res.status(400).json(
-                validationErrorResponse('trainerId', 'Invalid trainer ID format')
-            );
-        }
-
-        // Fetch schedules for the authenticated trainer
-        const schedules = await Schedule.find({
-            trainerId: new Types.ObjectId(trainerId)
-        }).sort({ date: 1, startTime: 1 });  // Sort by date and time
-
-        res.status(200).json(
-            successResponse('Class schedules retrieved successfully', schedules)
-        );
-    } catch (error) {
-        console.error('Error fetching schedules:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error',
-            statusCode: 500,
-            data: null
-        });
-    }
-};
-
-export const createClassSchedule = async (req: Request<{}, {}, ClassScheduleRequestBody>, res: Response) => {
-    try {
-        const { trainerId, className, description, date, startTime, maxParticipants } = req.body;
+        const { name, email, password } = req.body;
 
         // Validate required fields
-        if (!trainerId || !className || !description || !date || !startTime) {
+        if (!name || !email || !password) {
             return res.status(400).json(
-                validationErrorResponse('schedule', 'All fields are required')
+                validationErrorResponse('trainer', 'All fields are required')
             );
         }
 
-        // Validate date is in the future
-        const scheduleDate = new Date(date);
-        if (scheduleDate < new Date()) {
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
             return res.status(400).json(
-                validationErrorResponse('date', 'Schedule date must be in the future')
+                validationErrorResponse('email', 'Invalid email format')
             );
         }
 
-        // Validate time format
-        const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-        if (!timeRegex.test(startTime)) {
-            return res.status(400).json(
-                validationErrorResponse('time', 'Invalid time format. Use HH:mm')
-            );
-        }
+        // Hash password
+        const hashedPassword = await hashPassword(password);
 
-        // Calculate end time using the actual schedule date
-        const [hours, minutes] = startTime.split(':');
-        const startDateTime = new Date(scheduleDate);
-        startDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        const endDateTime = new Date(startDateTime);
-        endDateTime.setHours(endDateTime.getHours() + 2);
-
-        // Format end time to HH:mm
-        const endTime = endDateTime.toLocaleTimeString('en-GB', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
+        const trainer = new User({
+            name,
+            email,
+            password: hashedPassword,
+            role: 'trainer'
         });
-
-        // Check for overlapping schedules
-        const existingSchedule = await Schedule.findOne({
-            trainerId,
-            date,
-            $or: [
-                {
-                    $and: [
-                        { startTime: { $lte: startTime } },
-                        { endTime: { $gt: startTime } }
-                    ]
-                },
-                {
-                    $and: [
-                        { startTime: { $lt: endTime } },
-                        { endTime: { $gte: endTime } }
-                    ]
-                }
-            ]
-        });
-
-        if (existingSchedule) {
-            return res.status(400).json(
-                validationErrorResponse('schedule', 'Trainer has an overlapping schedule')
-            );
-        }
-
-        // Check daily schedule limit
-        const dailySchedules = await Schedule.countDocuments({
-            trainerId,
-            date
-        });
-
-        if (dailySchedules >= 5) {
-            return res.status(400).json(
-                scheduleLimitExceededResponse()
-            );
-        }
-
-        const classSchedule = await Schedule.create({
-            trainerId,
-            className,
-            description,
-            date,
-            startTime,
-            endTime,
-            maxParticipants: maxParticipants || 10,
-            currentParticipants: 0,
-            status: 'scheduled'
-        });
+        await trainer.save();
 
         res.status(201).json(
-            successResponse('Class schedule created successfully', classSchedule, 201)
-        );
-    } catch (error) {
-        res.status(500).json(
-            successResponse('Server error', null, 500)
-        );
-    }
-};
-
-export const deleteClassSchedule = async (req: Request<{ id: string }>, res: Response) => {
-    try {
-        const classSchedule = await Schedule.findByIdAndDelete(req.params.id);
-        if (!classSchedule) {
-            return res.status(404).json(
-                successResponse('Class schedule not found', null, 404)
-            );
-        }
-        res.status(200).json(
-            successResponse('Class schedule deleted successfully', null)
-        );
-    } catch (error) {
-        res.status(500).json(
-            successResponse('Server error', null, 500)
-        );
-    }
-};
-
-export const updateClassSchedule = async (req: Request<{ id: string }, {}, ClassScheduleRequestBody>, res: Response) => {
-    try {
-        const { trainerId, className, description, date, startTime, maxParticipants } = req.body;
-
-        // Validate required fields
-        if (!trainerId || !className || !description || !date || !startTime) {
-            return res.status(400).json(
-                validationErrorResponse('schedule', 'All fields are required')
-            );
-        }
-
-        // Validate date is in the future
-        const scheduleDate = new Date(date);
-        if (scheduleDate < new Date()) {
-            return res.status(400).json(
-                validationErrorResponse('date', 'Schedule date must be in the future')
-            );
-        }
-
-        // Validate time format
-        const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-        if (!timeRegex.test(startTime)) {
-            return res.status(400).json(
-                validationErrorResponse('time', 'Invalid time format. Use HH:mm')
-            );
-        }
-
-        // Calculate end time using the actual schedule date
-        const [hours, minutes] = startTime.split(':');
-        const startDateTime = new Date(scheduleDate);
-        startDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        const endDateTime = new Date(startDateTime);
-        endDateTime.setHours(endDateTime.getHours() + 2);
-
-        // Format end time to HH:mm
-        const endTime = endDateTime.toLocaleTimeString('en-GB', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
-
-        // Check for overlapping schedules
-        const existingSchedule = await Schedule.findOne({
-            trainerId,
-            date,
-            $or: [
-                {
-                    $and: [
-                        { startTime: { $lte: startTime } },
-                        { endTime: { $gt: startTime } }
-                    ]
-                },
-                {
-                    $and: [
-                        { startTime: { $lt: endTime } },
-                        { endTime: { $gte: endTime } }
-                    ]
+            successResponse('Trainer created successfully', {
+                trainer: {
+                    id: trainer._id,
+                    name: trainer.name,
+                    email: trainer.email,
+                    role: trainer.role
                 }
-            ]
-        });
-
-        if (existingSchedule) {
-            return res.status(400).json(
-                validationErrorResponse('schedule', 'Trainer has an overlapping schedule')
-            );
-        }
-
-        // Check daily schedule limit
-        const dailySchedules = await Schedule.countDocuments({
-            trainerId,
-            date
-        });
-
-        if (dailySchedules >= 5) {
-            return res.status(400).json(
-                scheduleLimitExceededResponse()
-            );
-        }
-
-        const classSchedule = await Schedule.findByIdAndUpdate(
-            req.params.id,
-            { trainerId, className, description, date, startTime, endTime, maxParticipants },
-            { new: true }
+            }, 201)
         );
+    } catch (error) {
+        if ((error as any).code === 11000) {
+            return res.status(400).json(
+                validationErrorResponse('email', 'Email already exists')
+            );
+        }
+        res.status(500).json(
+            successResponse('Server error', null, 500)
+        );
+    }
+};
 
-        if (!classSchedule) {
+export const updateTrainer = async (req: Request<{ id: string }, {}, TrainerRequestBody>, res: Response) => {
+    try {
+        const { name, email, password } = req.body;
+        const trainerId = req.params.id;
+
+        // Validate email format if email is being updated
+        if (email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                return res.status(400).json(
+                    validationErrorResponse('email', 'Invalid email format')
+                );
+            }
+        }
+
+        const updateData: any = { name, email };
+        if (password) {
+            updateData.password = await hashPassword(password);
+        }
+
+        const trainer = await User.findByIdAndUpdate(
+            trainerId,
+            updateData,
+            { new: true }
+        ).select('-password');
+
+        if (!trainer) {
             return res.status(404).json(
-                successResponse('Class schedule not found', null, 404)
+                successResponse('Trainer not found', null, 404)
+            );
+        }
+
+        res.status(200).json(
+            successResponse('Trainer updated successfully', trainer)
+        );
+    } catch (error) {
+        if ((error as any).code === 11000) {
+            return res.status(400).json(
+                validationErrorResponse('email', 'Email already exists')
+            );
+        }
+        res.status(500).json(
+            successResponse('Server error', null, 500)
+        );
+    }
+};
+
+export const deleteTrainer = async (req: Request<{ id: string }>, res: Response) => {
+    try {
+        const trainer = await User.findByIdAndDelete(req.params.id);
+        if (!trainer) {
+            return res.status(404).json(
+                successResponse('Trainer not found', null, 404)
             );
         }
         res.status(200).json(
-            successResponse('Class schedule updated successfully', classSchedule, 200)
+            successResponse('Trainer deleted successfully', null)
+        );
+    } catch (error) {
+        res.status(500).json(
+            successResponse('Server error', null, 500)
+        );
+    }
+};
+
+export const getAllTrainers = async (req: Request, res: Response) => {
+    try {
+        const trainers = await User.find({ role: 'trainer' }).select('-password');
+        res.status(200).json(
+            successResponse('Trainers retrieved successfully', trainers)
+        );
+    } catch (error) {
+        res.status(500).json(
+            successResponse('Server error', null, 500)
+        );
+    }
+};
+
+export const getTrainerById = async (req: Request<{ id: string }>, res: Response) => {
+    try {
+        const trainer = await User.findOne({ 
+            _id: req.params.id, 
+            role: 'trainer' 
+        }).select('-password');
+        
+        if (!trainer) {
+            return res.status(404).json(
+                successResponse('Trainer not found', null, 404)
+            );
+        }
+        res.status(200).json(
+            successResponse('Trainer retrieved successfully', trainer)
         );
     } catch (error) {
         res.status(500).json(

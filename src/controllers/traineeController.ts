@@ -6,13 +6,11 @@ import Schedule from "../models/Schedule";
 import {
     successResponse,
     validationErrorResponse,
-    unauthorizedResponse
+    unauthorizedResponse,
+    notFoundResponse,
+    serverErrorResponse
 } from "../utils/responseHandler";
-import { hashPassword } from '../utils/password';
-
-interface AuthRequest extends Request {
-    user?: { id: string; role: string }; // Matches middleware definition
-}
+import { AuthRequest } from '../types/userTypes';
 
 export const enrollSchedule = async (req: AuthRequest, res: Response) => {
     try {
@@ -53,7 +51,7 @@ export const enrollSchedule = async (req: AuthRequest, res: Response) => {
 
         if (!updatedSchedule) {
             return res.status(400).json(
-                validationErrorResponse('schedule', 'Schedule is not available for enrollment')
+                validationErrorResponse('schedule', 'Could not enroll in the schedule')
             );
         }
 
@@ -71,7 +69,7 @@ export const enrollSchedule = async (req: AuthRequest, res: Response) => {
                 $inc: { currentParticipants: -1 }
             });
             return res.status(404).json(
-                successResponse('User not found', null, 404)
+                notFoundResponse('User not found')
             );
         }
 
@@ -110,12 +108,9 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
             .populate('enrolledSchedules', 'className date startTime endTime');
 
         if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found',
-                statusCode: 404,
-                data: null
-            });
+            return res.status(404).json(
+                notFoundResponse('User not found')
+            );
         }
 
         res.status(200).json(
@@ -128,11 +123,93 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
             })
         );
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server error',
-            statusCode: 500,
-            data: null
-        });
+        res.status(500).json(
+            serverErrorResponse('Server error')
+            
+        );
     }
 };
+
+export const updateProfile = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        
+        if (!userId || !Types.ObjectId.isValid(userId)) {
+            return res.status(401).json(
+                unauthorizedResponse('Invalid authentication')
+            );
+        }
+
+        const { name, email, password } = req.body;
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { name, email, password },
+            { new: true }
+        ).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json(
+                notFoundResponse('User not found')
+            );
+        }
+
+        res.status(200).json(
+            successResponse('Profile updated successfully', {
+                id: updatedUser._id,
+                name: updatedUser.name,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                enrolledSchedules: updatedUser.enrolledSchedules
+            })
+        );
+    } catch (error) {
+        res.status(500).json(
+            serverErrorResponse('Server error')
+        );
+    }
+};
+
+export const deleteProfile = async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+  
+      if (!userId || !Types.ObjectId.isValid(userId)) {
+        return res.status(401).json(
+          unauthorizedResponse('Invalid authentication')
+        );
+      }
+  
+      // Find the user and their enrolled schedules
+      const user = await User.findById(userId).populate('enrolledSchedules');
+  
+      if (!user) {
+        return res.status(404).json(
+          notFoundResponse('User not found')
+        );
+      }
+  
+      // Remove the user from their enrolled schedules
+      if (user && user.enrolledSchedules) {
+          
+          await Promise.all(user.enrolledSchedules.map(async (schedule) => {
+            await Schedule.findByIdAndUpdate(schedule._id, {
+              $pull: { participants: userId },
+              $inc: { currentParticipants: -1 },
+            });
+          }));
+      }
+  
+      // Delete the user
+      await User.findByIdAndDelete(userId);
+  
+      res.status(200).json(
+        successResponse('Profile deleted successfully', null)
+      );
+    } catch (error) {
+      res.status(500).json(
+        serverErrorResponse('Server error')
+      );
+    }
+  };
+        
