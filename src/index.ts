@@ -4,6 +4,7 @@ import connectDB from './config/database';
 import userRoutes from './routes/userRoutes';
 import adminRoutes from './routes/adminRoutes';
 import trainerRoutes from './routes/trainerRoutes';
+import traineeRoutes from './routes/traineeRoutes';
 // Load environment variables
 dotenv.config();
 
@@ -20,6 +21,7 @@ connectDB();
 // Routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/trainee',traineeRoutes);
 app.use('/api/trainer',trainerRoutes);
 
 // Start server

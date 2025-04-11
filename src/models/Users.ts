@@ -1,11 +1,13 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, Schema, Types } from "mongoose";
 
 // Interface for User document
 export interface IUser extends Document {
     name: string;
     email: string;
     password: string;
-    role: 'admin' | 'trainer' | 'trainee';
+    //constant place in another file
+    role:'admin' | 'trainer' | 'trainee';
+    enrolledSchedules?: Types.ObjectId[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -33,7 +35,12 @@ const userSchema = new Schema({
         type: String, 
         enum: ['admin', 'trainer', 'trainee'],
         default: 'trainee'
-    }
+    },
+    enrolledSchedules: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Schedule',
+        default: []
+    }]
 }, {
     timestamps: true
 });

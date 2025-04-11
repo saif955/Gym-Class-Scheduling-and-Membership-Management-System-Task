@@ -84,7 +84,7 @@ ScheduleSchema.pre('save', function(this: ISchedule, next) {
     const [endHours, endMinutes] = this.endTime.split(':');
     endDate.setHours(parseInt(endHours), parseInt(endMinutes));
 
-    // Handle跨 midnight case by adding a day if end time is earlier in 24h format
+    // Handle midnight case by adding a day if end time is earlier in 24h format
     if (endHours < startHours) {
         endDate.setDate(endDate.getDate() + 1);
     }
