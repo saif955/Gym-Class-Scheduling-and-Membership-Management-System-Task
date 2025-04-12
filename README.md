@@ -1,7 +1,6 @@
 # Gym Management System
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-![Node.js CI](https://github.com/saif955/Gym-Management-System/workflows/Node.js%20CI/badge.svg)
 
 A role-based gym management system with JWT authentication and capacity control.
 
