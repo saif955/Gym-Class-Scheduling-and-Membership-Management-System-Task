@@ -53,6 +53,7 @@ Authorization: Bearer <JWT_TOKEN>
 | Trainee   | `/trainee/profile`      | GET    | Trainee    | Get profile                     |
 | Trainee   | `/trainee/profile`      | PUT    | Trainee    | Update profile                  |
 | Trainee   | `/trainee/enroll`       | POST   | Trainee    | Enroll in class                 |
+```
 Database Schema
 Schedule Model
 Field	Type	Description
