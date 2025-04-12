@@ -54,30 +54,40 @@ Authorization: Bearer <JWT_TOKEN>
 | Trainee   | `/trainee/profile`      | PUT    | Trainee    | Update profile                  |
 | Trainee   | `/trainee/enroll`       | POST   | Trainee    | Enroll in class                 |
 ```
-Database Schema
-Schedule Model
-Field	Type	Description
-trainerId	ObjectId	Reference to Trainer
-className	String	Class name
-description	String	Class description
-date	Date	Class date
-startTime	String	Start time (HH:mm)
-endTime	String	End time (HH:mm)
-maxParticipants	Number	Max capacity (default: 10)
-currentParticipants	Number	Current enrollments
-participants	[ObjectId]	Enrolled trainees
-User Model
-Field	Type	Description
-name	String	User's full name
-email	String	Unique email
-password	String	Hashed password
-role	Enum	['admin', 'trainer', 'trainee']
-enrolledSchedules	[ObjectId]	Enrolled class IDs
-Credentials
-Role	Email	Password
-Admin	saif@gmail.com	123456
-Trainer	trainer0@gmail.com	123456
-Trainee	trainee0@gmail.com	123456
+## Database Schema
+
+### Schedule Model
+
+| Field               | Type            | Description                          |
+|---------------------|-----------------|--------------------------------------|
+| `trainerId`         | `ObjectId`      | Reference to Trainer                 |
+| `className`         | `String`        | Class name                           |
+| `description`       | `String`        | Class description                    |
+| `date`              | `Date`          | Class date                           |
+| `startTime`         | `String`        | Start time (HH:mm format)            |
+| `endTime`           | `String`        | End time (HH:mm format)              |
+| `maxParticipants`   | `Number`        | Max capacity (default: 10)           |
+| `currentParticipants` | `Number`      | Current enrollments                  |
+| `participants`      | `[ObjectId]`    | Enrolled trainees                    |
+
+### User Model
+
+| Field               | Type            | Description                          |
+|---------------------|-----------------|--------------------------------------|
+| `name`              | `String`        | User's full name                     |
+| `email`             | `String`        | Unique email                         |
+| `password`          | `String`        | Hashed password                      |
+| `role`              | `Enum`          | `admin`, `trainer`, or `trainee`     |
+| `enrolledSchedules` | `[ObjectId]`    | Enrolled class IDs                   |
+
+## Default Credentials
+
+| Role       | Email                  | Password    |
+|------------|------------------------|-------------|
+| **Admin**  | `saif@gmail.com`       | `123456`    |
+| **Trainer**| `trainer0@gmail.com`   | `123456`    |
+| **Trainee**| `trainee0@gmail.com`   | `123456`    |
+
 Local Setup
 Clone repository
 
