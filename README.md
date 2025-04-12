@@ -39,20 +39,20 @@ Key Features:
 ### Authentication
 ```http
 Authorization: Bearer <JWT_TOKEN>
-Endpoints Table
-Category	Endpoint	Method	Role	Description
-Auth	/users/login	POST	Public	User login
-Auth	/users	POST	Public	Register user
-Trainer	/trainer	POST	Admin	Create trainer
-Trainer	/trainer/{trainerId}	PUT	Admin	Update trainer
-Trainer	/trainer/{trainerId}	DELETE	Admin	Delete trainer
-Schedule	/schedule	POST	Admin	Create schedule
-Schedule	/schedule/all	GET	Public	Get all schedules
-Schedule	/schedule/{scheduleId}	PUT	Admin	Update schedule
-Schedule	/schedule/{scheduleId}	DELETE	Admin	Delete schedule
-Trainee	/trainee/profile	GET	Trainee	Get profile
-Trainee	/trainee/profile	PUT	Trainee	Update profile
-Trainee	/trainee/enroll	POST	Trainee	Enroll in class
+| Category  | Endpoint                | Method | Role       | Description                     |
+|-----------|-------------------------|--------|------------|---------------------------------|
+| Auth      | `/users/login`          | POST   | Public     | User login                      |
+| Auth      | `/users`                | POST   | Public     | Register user                   |
+| Trainer   | `/trainer`              | POST   | Admin      | Create trainer                  |
+| Trainer   | `/trainer/{trainerId}`  | PUT    | Admin      | Update trainer                  |
+| Trainer   | `/trainer/{trainerId}`  | DELETE | Admin      | Delete trainer                  |
+| Schedule  | `/schedule`             | POST   | Admin      | Create schedule                 |
+| Schedule  | `/schedule/all`         | GET    | Public     | Get all schedules               |
+| Schedule  | `/schedule/{scheduleId}`| PUT    | Admin      | Update schedule                 |
+| Schedule  | `/schedule/{scheduleId}`| DELETE | Admin      | Delete schedule                 |
+| Trainee   | `/trainee/profile`      | GET    | Trainee    | Get profile                     |
+| Trainee   | `/trainee/profile`      | PUT    | Trainee    | Update profile                  |
+| Trainee   | `/trainee/enroll`       | POST   | Trainee    | Enroll in class                 |
 Database Schema
 Schedule Model
 Field	Type	Description
