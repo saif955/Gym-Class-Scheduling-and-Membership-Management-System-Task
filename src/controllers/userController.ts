@@ -15,15 +15,15 @@ export const login = async (req: Request<{}, {}, LoginRequestBody>, res: Respons
         const { email, password } = req.body;
 
         // Find trainee by email
-        const trainee = await User.findOne({ email });
-        if (!trainee) {
+        const user = await User.findOne({ email });
+        if (!user) {
             return res.status(401).json(
                 unauthorizedResponse('Invalid credentials')
             );
         }
 
         // Check password
-        const isMatch = await comparePassword(password, trainee.password);
+        const isMatch = await comparePassword(password, user.password);
         if (!isMatch) {
             return res.status(401).json(
                 unauthorizedResponse('Invalid credentials')
@@ -31,16 +31,16 @@ export const login = async (req: Request<{}, {}, LoginRequestBody>, res: Respons
         }
 
         // Generate token
-        const token = generateToken(trainee);
+        const token = generateToken(user);
 
         res.status(200).json(
             successResponse('Login successful', {
                 token,
-                trainee: {
-                    id: trainee._id,
-                    name: trainee.name,
-                    email: trainee.email,
-                    role: trainee.role
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role
                 }
             })
         );
